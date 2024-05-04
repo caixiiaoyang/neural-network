@@ -34,6 +34,25 @@ def numerical_gradient2d(f, x):
     return grads
 
 
+def numerical_grad2d(f, x):
+    h = 1e-4
+    grads = np.zeros_like(x)
+    w, h = x.shape
+    for i in range(w):
+        for j in range(h):
+            tem_val = x[i][j]
+
+            x[i][j] = tem_val + h
+            fxh1 = f(x)
+            x[i][j] = tem_val - h
+            fxh2 = f(x)
+            grads[i][j] = (fxh1 - fxh2) / (2 * h)
+
+            x[i][j] = tem_val
+
+    return grads
+
+
 def numerical_gradient(f, x):
     grads = np.zeros_like(x)
     if x.ndim == 1 or x.ndim == 2:
@@ -41,6 +60,18 @@ def numerical_gradient(f, x):
     for idx in range(len(x)):
         grad = numerical_gradient2d(f, x[idx])
         grads[idx] = grad
+    return grads
+
+
+def numerical_grad(f, x):
+    if x.ndim == 1:
+        return numerical_gradient1d(f, x)
+    x_shape = x.shape
+    if x.ndim != 2:
+        x = x.reshape(x.shape[0], -1)
+    grads = numerical_grad2d(f, x)
+    grads = grads.reshape(x_shape)
+
     return grads
 
 
