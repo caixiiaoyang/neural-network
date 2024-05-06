@@ -1,15 +1,21 @@
 from common.layer import BatchNormalization
 import numpy as np
-from grad import numerical_grad
+from dataset import load_mnist
+from common.multi_layer_net_extend import MultiLayerNetExtend
 
-inputs = np.random.randn(8, 16)
-gamma = np.ones(16, )
-beta = np.zeros(16, )
+(x_train, t_train), (x_test, t_test) = load_mnist(normolize=True,
+                                                  one_hot_lable=True)
 
-bn = BatchNormalization(gamma, beta)
-out = bn.forward(inputs)
-dout = np.ones_like(out)
-bn_f = lambda x: bn.forward(x)
-backward_dx = bn.backward(dout)
-numerical_dx = numerical_grad(bn_f, inputs)
-print(np.allclose(backward_dx, numerical_dx))
+network = MultiLayerNetExtend(input_size=784,
+                              hidden_size_list=[100, 100],
+                              output_size=10,
+                              use_batchnorm=True)
+x_batch = x_train[:100]
+t_batch = t_train[:100]
+
+grad_backprop = network.gradient(x_batch, t_batch)
+grad_numerical = network.numerical_grad(x_batch, t_batch)
+
+for key in grad_backprop.keys():
+    diff = np.average(np.abs(grad_backprop[key] - grad_numerical[key]))
+    print(f"key:{diff}")

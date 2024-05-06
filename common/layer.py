@@ -2,7 +2,6 @@ import numpy as np
 
 
 class Relu:
-
     def __init__(self) -> None:
         self.mask = None
 
@@ -21,7 +20,6 @@ class Relu:
 
 
 class Sigmod:
-
     def __init__(self) -> None:
         self.out = None
 
@@ -37,7 +35,6 @@ class Sigmod:
 
 
 class Affine:
-
     def __init__(self, W, b) -> None:
         self.W = W
         self.b = b
@@ -89,7 +86,6 @@ def corss_entropy_error(y, t):
 
 
 class SoftmaxWithLoss:
-
     def __init__(self) -> None:
         self.loss = None
         self.y = None
@@ -110,7 +106,6 @@ class SoftmaxWithLoss:
 
 
 class BatchNormalization:
-
     def __init__(self,
                  gamma,
                  beta,
@@ -157,7 +152,9 @@ class BatchNormalization:
             self.xn = xn
             self.std = std
             self.running_mean = self.momentum * self.running_mean + (
-                1 - self.running_mean) * mu
+                1 - self.momentum) * mu
+            self.running_var = self.momentum * self.running_var + (
+                1 - self.momentum) * var
         else:
             xc = x - self.running_mean
             xn = xc / (np.sqrt(self.running_var + 1e-6))
@@ -188,3 +185,20 @@ class BatchNormalization:
         self.dgamma = dgamma
         self.dbeta = dbeta
         return dx
+
+
+class Dropout:
+    def __init__(self, dropout_ratio=0.5) -> None:
+        self.dropout_ratio = dropout_ratio
+        self.mask = None
+
+    def forward(self, x, train_flg=True):
+        if train_flg:
+            self.mask = np.random.rand(*x.shape) > self.dropout_ratio
+            return x * self.mask
+
+        else:
+            return x * (1.0 - self.dropout_ratio)
+
+    def backward(self, dout):
+        return dout * self.mask
