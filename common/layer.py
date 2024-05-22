@@ -1,4 +1,5 @@
 import numpy as np
+from common.util import im2col_indices, col2im_indices
 
 
 class Relu:
@@ -202,3 +203,86 @@ class Dropout:
 
     def backward(self, dout):
         return dout * self.mask
+
+
+class Convolution:
+    def __init__(self, W, b, stride=1, pad=0) -> None:
+        self.W = W
+        self.b = b
+        self.stride = stride
+        self.pad = pad
+
+    def forward(self, x):
+        FN, C, FH, FW = self.W.shape
+        N, C, W, H = x.shape
+        out_h = (H + 2 * self.pad - FH) // self.stride + 1
+        out_w = (W + 2 * self.pad - FW) // self.stride + 1
+        col = im2col_indices(x, FH, FW, self.stride, self.pad)
+        col_w = self.W.reshape(FN, -1).T
+        out = np.dot(col, col_w) + self.b
+
+        out = out.reshape(N, out_h, out_w, -1).transpose(0, 3, 1, 2)
+
+        self.x = x
+        self.col = col
+        self.clo_w = col_w
+
+        return out
+
+    def backward(self, dout):
+        FN, C, FH, FW = self.W.shape
+        dout = dout.transpose(0, 2, 3, 1).reshape(-1, FN)
+
+        self.db = np.sum(dout, axis=0)
+
+        self.dW = np.dot(self.col.T, dout)
+        self.dW = self.dW.transpose(1, 0).reshape(FN, C, FH, FW)
+
+        dcol = np.dot(dout, self.clo_w.T)
+
+        dx = col2im_indices(dcol, self.x.shape, FH, FW, self.stride, self.pad)
+
+        return dx
+
+
+class Pooling:
+    def __init__(self, pool_h, pool_w, stride=1, pad=0) -> None:
+        self.pool_h = pool_h
+        self.pool_w = pool_w
+        self.stride = stride
+        self.pad = pad
+        self.x = None
+        self.arg_max = None
+
+    def forward(self, x):
+        N, C, H, W = x.shape
+        out_h = (H + 2 * self.pad - self.pool_h) // self.stride + 1
+        out_w = (W + 2 * self.pad - self.pool_w) // self.stride + 1
+
+        cols = im2col_indices(x, self.pool_h, self.pool_w, self.stride,
+                              self.pad)
+
+        cols = cols.reshape(-1, self.pool_h * self.pool_w)
+
+        out = np.max(cols, axis=1)
+
+        out = out.reshape(N, out_h, out_w, C).transpose(0, 3, 1, 2)
+
+        self.arg_max = np.argmax(cols, axis=1)
+
+        return out
+
+    def backward(self, dout):
+        dout = dout.transpose(0, 2, 3, 1)
+        pool_size = self.pool_h * self.pool_w
+        dmax = np.zeros(dout.size, pool_size)
+        dmax[np.arange(self.arg_max.size),
+             self.arg_max.flatten()] = dout.flatten()
+        dmax = dmax.reshape(dout.shape + (pool_size, ))
+
+        dcol = dmax.reshape(dmax.shape[0] * dmax.shape[1] * dmax.shape[2], -1)
+
+        dx = col2im_indices(dcol, self.x.shape, self.pool_h, self.pool_w,
+                            self.stride, self.pad)
+
+        return dx
