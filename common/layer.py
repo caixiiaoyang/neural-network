@@ -40,10 +40,13 @@ class Affine:
         self.W = W
         self.b = b
         self.x = None
+        self.original_x_shape = None
         self.dW = None
         self.db = None
 
     def forward(self, x):
+        self.original_x_shape = x.shape
+        x = x.reshape(x.shape[0], -1)
         self.x = x
         out = np.dot(x, self.W) + self.b
 
@@ -53,6 +56,7 @@ class Affine:
         dx = np.dot(dout, self.W.T)
         self.dW = np.dot(self.x.T, dout)
         self.db = np.sum(dout, axis=0)
+        dx = dx.reshape(*self.original_x_shape)
 
         return dx
 
@@ -64,26 +68,49 @@ def softmax1d(a):
     return exp_a / sum_exp_a
 
 
-def softmax(a):
-    if a.ndim == 1:
-        return softmax1d(a)
+# def softmax(a):
+#     if a.ndim == 1:
+#         return softmax1d(a)
 
-    c = np.max(a, axis=1)
-    c = c.reshape(-1, 1)
-    exp_a = np.exp(a - c)
-    sum_exp_a = np.sum(exp_a, axis=1)
-    sum_exp_a = sum_exp_a.reshape(-1, 1)
+#     c = np.max(a, axis=1)
+#     c = c.reshape(-1, 1)
+#     exp_a = np.exp(a - c)
+#     sum_exp_a = np.sum(exp_a, axis=1)
+#     sum_exp_a = sum_exp_a.reshape(-1, 1)
 
-    return exp_a / sum_exp_a
+#     return exp_a / sum_exp_a
 
 
-def corss_entropy_error(y, t):
+def softmax(x):
+    if x.ndim == 2:
+        x = x.T
+        x = x - np.max(x, axis=0)
+        y = np.exp(x) / np.sum(np.exp(x), axis=0)
+        return y.T
+
+    x = x - np.max(x)
+    return np.exp(x) / np.sum(np.exp(x))
+
+
+# def corss_entropy_error(y, t):
+#     if y.ndim == 1:
+#         t = t.reshape(1, t.size)
+#         y = y.reshape(1, y.size)
+#     batch_size = y.shape[0]
+#     loss = -np.sum(t * np.log(y + 1e-7)) / batch_size
+#     return loss
+
+
+def cross_entropy_error(y, t):
     if y.ndim == 1:
         t = t.reshape(1, t.size)
         y = y.reshape(1, y.size)
+
+    if t.size == y.size:
+        t = t.argmax(axis=1)
+
     batch_size = y.shape[0]
-    loss = -np.sum(t * np.log(y + 1e-7)) / batch_size
-    return loss
+    return -np.sum(np.log(y[np.arange(batch_size), t] + 1e-7)) / batch_size
 
 
 class SoftmaxWithLoss:
@@ -95,13 +122,18 @@ class SoftmaxWithLoss:
     def forward(self, x, t):
         self.t = t
         self.y = softmax(x)
-        self.loss = corss_entropy_error(self.y, self.t)
+        self.loss = cross_entropy_error(self.y, self.t)
 
         return self.loss
 
     def backward(self, dout):
         batch_size = self.t.shape[0]
-        dx = (self.y - self.t) / batch_size
+        if self.t.size == self.y.size:
+            dx = (self.y - self.t) / batch_size
+        else:
+            dx = self.y.copy()
+            dx[np.arange(batch_size), self.t] -= 1
+            dx = dx / batch_size
 
         return dx
 
@@ -212,6 +244,10 @@ class Convolution:
         self.stride = stride
         self.pad = pad
 
+        self.x = None
+        self.dW = None
+        self.db = None
+
     def forward(self, x):
         FN, C, FH, FW = self.W.shape
         N, C, W, H = x.shape
@@ -255,6 +291,7 @@ class Pooling:
         self.arg_max = None
 
     def forward(self, x):
+        self.x = x
         N, C, H, W = x.shape
         out_h = (H + 2 * self.pad - self.pool_h) // self.stride + 1
         out_w = (W + 2 * self.pad - self.pool_w) // self.stride + 1
@@ -275,7 +312,7 @@ class Pooling:
     def backward(self, dout):
         dout = dout.transpose(0, 2, 3, 1)
         pool_size = self.pool_h * self.pool_w
-        dmax = np.zeros(dout.size, pool_size)
+        dmax = np.zeros((dout.size, pool_size))
         dmax[np.arange(self.arg_max.size),
              self.arg_max.flatten()] = dout.flatten()
         dmax = dmax.reshape(dout.shape + (pool_size, ))
