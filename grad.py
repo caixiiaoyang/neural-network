@@ -63,6 +63,26 @@ def numerical_gradient(f, x):
     return grads
 
 
+def numerical_grads(f, x):
+    h = 1e-4
+    grads = np.zeros_like(x)
+    it = np.nditer(x, flags=['multi_index'], op_flags=['readwrite'])
+    while not it.finished:
+        idx = it.multi_index
+        tmp_val = x[idx]
+        x[idx] = tmp_val + h
+        fxh1 = f(x)
+
+        x[idx] = tmp_val - h
+        fxh2 = f(x)
+
+        grads[idx] = (fxh1 - fxh2) / (2 * h)
+
+        x[idx] = tmp_val
+        it.iternext()
+    return grads
+
+
 def numerical_grad(f, x):
     if x.ndim == 1:
         return numerical_gradient1d(f, x)

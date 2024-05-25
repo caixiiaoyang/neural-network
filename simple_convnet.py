@@ -2,7 +2,7 @@ import numpy as np
 from collections import OrderedDict
 import pickle
 from common.layer import *
-from grad import numerical_gradient
+from grad import numerical_grads
 
 
 class SimpleConvNet:
@@ -59,7 +59,7 @@ class SimpleConvNet:
 
     def predict(self, x):
         for layer in self.layers.values():
-            x = layer.forward()
+            x = layer.forward(x)
 
         return x
 
@@ -85,8 +85,8 @@ class SimpleConvNet:
 
         grads = {}
         for i in (1, 2, 3):
-            grads[f"W{i}"] = numerical_gradient(loss_w, self.params[f"W{i}"])
-            grads[f"b{i}"] = numerical_gradient(loss_w, self.params[f"b{i}"])
+            grads[f"W{i}"] = numerical_grads(loss_w, self.params[f"W{i}"])
+            grads[f"b{i}"] = numerical_grads(loss_w, self.params[f"b{i}"])
 
         return grads
 

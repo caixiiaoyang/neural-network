@@ -2,7 +2,6 @@ import numpy as np
 
 
 class SGD:
-
     def __init__(self, lr=0.01) -> None:
         self.lr = lr
 
@@ -12,7 +11,6 @@ class SGD:
 
 
 class SGDM:
-
     def __init__(self, lr=0.01, momentum=0.9) -> None:
         self.lr = lr
         self.momentum = momentum
@@ -30,7 +28,6 @@ class SGDM:
 
 
 class AdaGrad:
-
     def __init__(self, lr=0.01) -> None:
         self.lr = lr
         self.h = None
@@ -48,7 +45,6 @@ class AdaGrad:
 
 
 class RMSprop:
-
     def __init__(self, lr=0.01, decay_rate=0.99) -> None:
         self.lr = lr
         self.decay_rate = decay_rate
@@ -68,7 +64,6 @@ class RMSprop:
 
 
 class Adam:
-
     def __init__(self, lr=0.01, beta1=0.9, beta2=0.999) -> None:
         self.lr = lr
         self.beta1 = beta1
@@ -79,6 +74,7 @@ class Adam:
 
     def update(self, params, grads):
         if self.m is None:
+            self.m, self.v = {}, {}
             for key, val in params.items():
                 self.m[key] = np.zeros_like(val)
                 self.v[key] = np.zeros_like(val)
