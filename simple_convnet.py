@@ -123,9 +123,9 @@ class SimpleConvNet:
         with open(file_name, "rb") as f:
             params = pickle.load(f)
 
-        for key, val in params.itemms():
+        for key, val in params.items():
             self.params[key] = val
 
         for i, key in enumerate(["Conv1", "Affine1", "Affine2"]):
-            self.layers[key].W = self.params[f"W{i}"]
-            self.layers[key].b = self.params[f"W{i}"]
+            self.layers[key].W = self.params[f"W{i+1}"]
+            self.layers[key].b = self.params[f"W{i+1}"]
